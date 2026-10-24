@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVG — Restricted Archive Access</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --green:      #22c55e;
+    --green-dim:  #16a34a;
+    --green-dark: #0d6b2e;
+    --amber:      #f59e0b;
+    --red:        #ef4444;
+    --bg:         #030804;
+    --panel:      #060e07;
+    --border:     #0d2a10;
+  }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--green);
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    overflow-x: hidden;
+  }
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none; z-index: 9999;
+  }
+
+  /* BOOT */
+  #boot-screen {
+    position: fixed; inset: 0; background: var(--bg);
+    z-index: 1000; display: flex;
+    align-items: center; justify-content: center;
+    flex-direction: column; gap: 4px;
+  }
+  #boot-screen.hidden { display: none; }
+  .boot-line {
+    font-size: 13px; color: #16a34a; opacity: 0;
+    transition: opacity 0.15s; width: 580px; max-width: 90vw;
+  }
+  .boot-line.visible { opacity: 1; }
+  .boot-line.bright  { color: var(--green); }
+  .boot-line.warn    { color: var(--amber); }
+
+  /* AUTH */
+  #auth-screen {
+    position: fixed; inset: 0; background: var(--bg);
+    z-index: 900; display: none;
+    align-items: center; justify-content: center;
+  }
+  #auth-screen.active { display: flex; }
+  .auth-box {
+    width: 500px; max-width: 90vw;
+    border: 1px solid var(--green-dark);
+    padding: 32px; background: var(--panel);
+  }
+  .auth-title {
+    font-size: 11px; letter-spacing: 0.12em; color: #16a34a;
+    margin-bottom: 20px; text-align: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 14px; line-height: 1.8;
+  }
+  .auth-label { font-size: 11px; color: #16a34a; margin-bottom: 8px; letter-spacing: 0.06em; }
+  .auth-input-wrap {
+    display: flex; align-items: center;
+    border: 1px solid var(--green-dark);
+    background: #030804; padding: 8px 12px; margin-bottom: 14px;
+  }
+  .auth-prompt { color: #16a34a; margin-right: 8px; font-size: 13px; }
+  #auth-input {
+    background: none; border: none; outline: none;
+    color: var(--green); font-family: 'Courier New', monospace;
+    font-size: 13px; width: 100%; letter-spacing: 0.1em;
+  }
+  .auth-btn {
+    width: 100%; background: var(--green-dark); color: var(--green);
+    border: 1px solid var(--green-dim); padding: 10px;
+    font-family: 'Courier New', monospace; font-size: 13px;
+    cursor: pointer; letter-spacing: 0.08em; transition: background 0.15s;
+  }
+  .auth-btn:hover { background: #0d4a20; }
+  #auth-error {
+    color: var(--red); font-size: 11px; text-align: center;
+    margin-top: 10px; min-height: 16px; letter-spacing: 0.04em;
+  }
+  .auth-footer {
+    font-size: 10px; color: #0d4a20; text-align: center;
+    margin-top: 20px; padding-top: 14px;
+    border-top: 1px solid var(--border); line-height: 1.7;
+  }
+
+  /* TERMINAL */
+  #terminal-screen { display: none; flex-direction: column; height: 100vh; }
+  #terminal-screen.active { display: flex; }
+  .term-header {
+    background: var(--panel); border-bottom: 1px solid var(--border);
+    padding: 8px 20px; display: flex;
+    justify-content: space-between; align-items: center; flex-shrink: 0;
+  }
+  .term-header-left { font-size: 11px; color: #16a34a; letter-spacing: 0.06em; }
+  .term-header-right { display: flex; gap: 20px; font-size: 10px; color: #0d4a20; }
+  .status-dot {
+    display: inline-block; width: 6px; height: 6px;
+    border-radius: 50%; background: var(--green);
+    margin-right: 5px; animation: pulse 2.5s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  #output {
+    flex: 1; overflow-y: auto; padding: 18px 20px 8px;
+    white-space: pre-wrap; word-break: break-word; line-height: 1.65;
+  }
+  #output::-webkit-scrollbar { width: 6px; }
+  #output::-webkit-scrollbar-track { background: var(--bg); }
+  #output::-webkit-scrollbar-thumb { background: var(--green-dark); }
+  .c-main      { color: var(--green); }
+  .c-dim       { color: #16a34a; }
+  .c-faint     { color: #0d4a20; }
+  .c-amber     { color: var(--amber); }
+  .c-amber-dim { color: #b45309; }
+  .c-red       { color: var(--red); }
+  .term-input-wrap {
+    border-top: 1px solid var(--border); padding: 10px 20px;
+    display: flex; align-items: center; flex-shrink: 0;
+    background: var(--panel);
+  }
+  #prompt-label {
+    color: var(--green-dim); margin-right: 10px;
+    font-size: 13px; white-space: nowrap; font-weight: bold;
+  }
+  #cmd-input {
+    background: none; border: none; outline: none;
+    color: var(--green); font-family: 'Courier New', monospace;
+    font-size: 14px; width: 100%; caret-color: var(--green);
+  }
+  .file-block {
+    border: 1px solid var(--border); background: #020604;
+    padding: 16px 18px; margin: 8px 0; line-height: 1.8;
+  }
+  .file-block-header {
+    color: #16a34a; font-size: 11px; letter-spacing: 0.06em;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px; margin-bottom: 12px;
+  }
+  .file-rule { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+  .redact {
+    background: #111; color: #111;
+    user-select: all; cursor: text; padding: 0 4px;
+  }
+
+  /* ── RECOVERY STRIP ── */
+  #recovery-widget {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #020804;
+    z-index: 500;
+    display: none;
+    align-items: center;
+  }
+
+  #recovery-widget.visible { display: flex; }
+
+  .rw-bar-wrap {
+    position: absolute;
+    left: 0; top: 0;
+    width: 100%;
+    height: 3px;
+    background: #020804;
+  }
+
+  .rw-bar-fill {
+    height: 100%;
+    width: 2%;
+    background: var(--green-dark);
+    position: relative;
+  }
+
+  .rw-bar-fill::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 12px; height: 100%;
+    background: rgba(34,197,94,0.5);
+    animation: rw-shimmer 2s infinite;
+  }
+
+  @keyframes rw-shimmer {
+    0%, 100% { opacity: 0; }
+    50%       { opacity: 1; }
+  }
+
+  .rw-label {
+    position: fixed;
+    bottom: 6px;
+    right: 10px;
+    font-size: 9px;
+    color: #0d3a18;
+    letter-spacing: 0.06em;
+    pointer-events: none;
+  }
+
+  .rw-blink {
+    display: inline-block;
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--green-dark);
+    margin-right: 4px;
+    vertical-align: middle;
+    animation: rw-pulse 1.6s infinite;
+  }
+
+  @keyframes rw-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.1; }
+  }
+
+  @media (max-width: 600px) {
+    html { font-size: 12px; }
+    .term-header-right { display: none; }
+    #output { padding: 12px 14px 6px; }
+    .term-input-wrap { padding: 8px 14px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- BOOT -->
+<div id="boot-screen"><div id="boot-lines"></div></div>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-title">
+      AGRO-VANCE GLOBAL — RESTRICTED ARCHIVE SYSTEM<br>
+      SECTOR: RIVER RIDGE INDUSTRIAL PROCESSING COMPLEX<br>
+      NODE: AVG-ARCH-04 // COLD STORAGE RECOVERY MODE
+    </div>
+    <div class="auth-label">ENTER ARCHIVE ACCESS CODE</div>
+    <div class="auth-input-wrap">
+      <span class="auth-prompt">PASS &gt;</span>
+      <input type="password" id="auth-input" maxlength="32"
+             placeholder="access code required"
+             autocomplete="off" spellcheck="false">
+    </div>
+    <button class="auth-btn" onclick="attemptAuth()">AUTHENTICATE</button>
+    <div id="auth-error"></div>
+    <div class="auth-footer">
+      This system contains proprietary operational data belonging to Agro-Vance Global.<br>
+      Unauthorized access is a federal offense.<br>
+      All access attempts are logged and traced.
+    </div>
+  </div>
+</div>
+
+<!-- RECOVERY WIDGET -->
+<div id="recovery-widget">
+  <div class="rw-bar-wrap">
+    <div class="rw-bar-fill"></div>
+  </div>
+</div>
+<div class="rw-label" id="rw-label-text" style="display:none;">
+  <span class="rw-blink"></span>recovery: 2%
+</div>
+
+<!-- TERMINAL -->
+<div id="terminal-screen">
+  <div class="term-header">
+    <div class="term-header-left">
+      <span class="status-dot"></span>
+      AVG-ARCH-04 // RIVER RIDGE // COLD STORAGE // ACCESS: AUTHENTICATED
+    </div>
+    <div class="term-header-right">
+      <span>BUILD: 2025.03.14</span>
+      <span id="term-clock">--:-- UTC</span>
+    </div>
+  </div>
+  <div id="output"></div>
+  <div class="term-input-wrap">
+    <span id="prompt-label">AVG_ARCH&gt;</span>
+    <input type="text" id="cmd-input" autocomplete="off"
+           spellcheck="false" placeholder="type 'help' for commands">
+  </div>
+</div>
+
+<script>
+// ── BOOT ──
+const bootLines = [
+  { t: 'AGRO-VANCE GLOBAL — ARCHIVE RECOVERY SYSTEM v4.2.1', c: 'bright' },
+  { t: 'Node: RR-ARCH-04 // River Ridge Industrial Processing Complex', c: '' },
+  { t: 'Mounting cold storage partition AVG-INTERNAL...', c: '' },
+  { t: '  [SECTOR 01] Integrity check... OK', c: '' },
+  { t: '  [SECTOR 02] Integrity check... OK', c: '' },
+  { t: '  [SECTOR 03] Integrity check... PARTIAL — files flagged for deletion', c: 'warn' },
+  { t: '  [SECTOR 04] Integrity check... OK', c: '' },
+  { t: 'Indexing recovered documents...', c: '' },
+  { t: '  12 documents recovered from cold storage', c: '' },
+  { t: '  Build timestamp: 2025-03-14 — no administrator activity since', c: 'warn' },
+  { t: '', c: '' },
+  { t: 'WARNING: This system has not been actively administered since 14 March 2025.', c: 'warn' },
+  { t: '', c: '' },
+  { t: 'Authentication required to proceed.', c: 'bright' },
+];
+
+let bootIdx = 0;
+const bootContainer = document.getElementById('boot-lines');
+function runBoot() {
+  if (bootIdx >= bootLines.length) {
+    setTimeout(() => {
+      document.getElementById('boot-screen').classList.add('hidden');
+      document.getElementById('auth-screen').classList.add('active');
+      document.getElementById('auth-input').focus();
+    }, 500);
+    return;
+  }
+  const line = bootLines[bootIdx];
+  const el = document.createElement('div');
+  el.className = 'boot-line ' + (line.c || '');
+  el.textContent = line.t || '\u00a0';
+  bootContainer.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('visible'));
+  bootIdx++;
+  setTimeout(runBoot, bootIdx < 4 ? 55 : 110);
+}
+runBoot();
+
+// ── AUTH ──
+let failedAttempts = 0;
+function attemptAuth() {
+  const input = document.getElementById('auth-input').value.trim().toUpperCase();
+  const errEl  = document.getElementById('auth-error');
+  const valid  = ['SIGMA-DELTA-NINE','SIGMADELTANINE','SD-9','SD9','SD-9-0047'];
+  if (valid.includes(input)) {
+    errEl.textContent = 'ACCESS GRANTED — loading archive...';
+    errEl.style.color = 'var(--green)';
+    setTimeout(() => {
+      document.getElementById('auth-screen').classList.remove('active');
+      document.getElementById('terminal-screen').classList.add('active');
+      document.getElementById('cmd-input').focus();
+      initTerminal(); startClock();
+      // Show recovery strip after a short delay
+      setTimeout(() => {
+        document.getElementById('recovery-widget').classList.add('visible');
+        document.getElementById('rw-label-text').style.display = 'block';
+      }, 2200);
+    }, 700);
+  } else {
+    failedAttempts++;
+    errEl.style.color = 'var(--red)';
+    errEl.textContent = failedAttempts >= 3
+      ? 'REPEATED FAILED ATTEMPTS LOGGED — IP TRACE INITIATED'
+      : `INVALID ACCESS CODE — ATTEMPT ${failedAttempts} LOGGED`;
+    document.getElementById('auth-input').value = '';
+    document.getElementById('auth-input').focus();
+  }
+}
+document.getElementById('auth-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') attemptAuth();
+});
+
+// ── TERMINAL ENGINE ──
+const out = document.getElementById('output');
+const cmdInput = document.getElementById('cmd-input');
+let cmdHistory = [], historyIdx = -1;
+
+function startClock() {
+  function tick() {
+    const n = new Date(), p = v => String(v).padStart(2,'0');
+    document.getElementById('term-clock').textContent =
+      `${p(n.getUTCHours())}:${p(n.getUTCMinutes())}:${p(n.getUTCSeconds())} UTC`;
+  }
+  tick(); setInterval(tick, 1000);
+}
+
+function println(html) {
+  const d = document.createElement('div');
+  d.innerHTML = html;
+  out.appendChild(d);
+  out.scrollTop = out.scrollHeight;
+}
+
+function hr() { return '<span class="c-faint">' + '─'.repeat(72) + '</span>'; }
+
+function initTerminal() {
+  [
+    '',
+    '<span class="c-main">AGRO-VANCE GLOBAL // RESTRICTED ARCHIVE — RR-ARCH-04</span>',
+    '<span class="c-dim">River Ridge Industrial Processing Complex — Cold Storage Recovery</span>',
+    '<span class="c-faint">Build: 2025.03.14 // Documents recovered: 12 // Last activity: 2025-03-14</span>',
+    '',
+    hr(),
+    '',
+    '<span class="c-amber">NOTICE: No administrator has accessed this node since 14 March 2025.</span>',
+    '<span class="c-amber">System running on automated backup power. Some records may be incomplete.</span>',
+    '',
+    hr(),
+    '',
+    '<span class="c-dim">Type <span class="c-main">ls</span> to list recovered files.</span>',
+    '<span class="c-dim">Type <span class="c-main">help</span> for available commands.</span>',
+    '',
+  ].forEach(l => println(l));
+}
+
+// ── FILES ──
+const files = {
+
+  'ls': () => {
+    println('');
+    println('<span class="c-dim">COLD STORAGE NODE RR-ARCH-04 — FILE INDEX</span>');
+    println('<span class="c-faint">12 documents recovered // Last write: 2025-03-14</span>');
+    println('');
+    [
+      ['COMPLIANCE_AUDIT_2024_Q4.TXT','UNLOCKED',  'SQF Level 3 audit summary — Q4 2024'],
+      ['SUPPLIER_CERT_REGISTER.TXT', 'UNLOCKED',  'Active supplier certification register — Jan 2025'],
+      ['INGREDIENT_SPEC_AVG_STD.TXT','UNLOCKED',  'Standard ingredient specification sheet — portfolio'],
+      ['DIST_PARTNER_AGREEMENTS.TXT','UNLOCKED',  'Distribution partner agreement index — all channels'],
+      ['WASTE_DISPOSAL_LOG_2024.TXT','UNLOCKED',  'Waste disposal and effluent log — River Ridge 2024'],
+      ['BATCH_CLEARANCE_109S.TXT',   'UNLOCKED',  'QA certificate — AV-Gluten-9 Batch 109-Sigma'],
+      ['SUPPLY_ROUTE_MAP.TXT',       'UNLOCKED',  'Distribution grid — Channels Alpha through Delta'],
+      ['REACTOR_INCIDENT_RR4.TXT',   'UNLOCKED',  'Incident report — Bio-Reactor Core 4 — Nov 2024'],
+      ['MEMO_REG_STRATEGY_0115.TXT', 'UNLOCKED',  'Internal memo — regulatory pathway — 15 Jan 2025'],
+      ['REG_CORRESP_FDA_0202.TXT',   'UNLOCKED',  'Regulator correspondence — notice withdrawal — 02 Feb 2025'],
+      ['RND_LOG_CORE4_0310.TXT',     'ENCRYPTED', 'R&amp;D log — Bio-Reactor Core 4 — 10 Mar 2025 // KEY REQUIRED'],
+      ['SYS_LOG_RR04_0314.TXT',      'ENCRYPTED', 'Internal system log — 14 March 2025 // KEY REQUIRED'],
+    ].forEach(([name, status, desc]) => {
+      const sc = status === 'UNLOCKED' ? 'c-main' : 'c-amber';
+      println(
+        `  <span class="c-main">${name.padEnd(34)}</span>  ` +
+        `<span class="${sc}">[${status}]</span>  ` +
+        `<span class="c-faint">${desc}</span>`
+      );
+    });
+    println('');
+    println('<span class="c-faint">Encrypted files: <span class="c-amber">cat [filename] --key [code]</span></span>');
+    println('');
+  },
+
+  // ── DUMMY FILE 1 — COMPLIANCE AUDIT ──
+  'cat compliance_audit_2024_q4.txt': () => {
+    println('');
+    println('<div class="file-block">');
+    println('<div class="file-block-header">AGRO-VANCE GLOBAL // QUALITY ASSURANCE DIVISION\nSQF LEVEL 3 AUDIT SUMMARY — Q4 2024\nSITE: RIVER RIDGE INDUSTRIAL PROCESSING COMPLEX</div>');
+    println('');
+    println('Audit conducted: 18–20 November 2024');
+    println('Auditing body: SGS North America Inc.');
+    println('');
+    println('  <span class="c-dim">ELEMENT 2.1</span>   Management commitment .............. SATISFACTORY');
+    println('  <span class="c-dim">ELEMENT 2.4</span>   Food safety plan ................... SATISFACTORY');
+    println('  <span class="c-dim">ELEMENT 2.6</span>   Supplier approval and performance .. SATISFACTORY');
+    println('  <span class="c-dim">ELEMENT 2.8</span>   Food fraud mitigation .............. SATISFACTORY');
+    println('  <span class="c-dim">ELEMENT 2.10</span>  Allergen management ................ SATISFACTORY');
+    println('  <span class="c-dim">ELEMENT 11.7</span>  Waste management ................... SATISFACTORY');
+    println('');
+    println('Minor observations: 2');
+    println('  — Label verification log incomplete for three SKUs on Line 4.');
+    println('    Corrective action plan submitted 02 Dec 2024.');
+    println('  — Checkweigher CW-07 calibration overdue by 11 days.');
+    println('    Recalibrated during audit window.');
+    println('');
+    println('Major non-conformances: 0');
+    println('Critical non-conformances: 0');
+    println('');
+    println('Overall result: <span class="c-main">CERTIFIED — SQF LEVEL 3</span>');
+    println('Certificate valid: 20 November 2024 — 19 November 2025');
+    println('');
+    println('<span class="c-faint">Filed: QA Division // River Ridge // November 2024</span>');
+    println('</div>');
+    println('');
+  },
+
+  // ── DUMMY FILE 2 — SUPPLIER CERT REGISTER ──
+  'cat supplier_cert_register.txt': () => {
+    println('');
+    println('<div class="file-block">');
+    println('<div class="file-block-header">AGRO-VANCE GLOBAL // PROCUREMENT DIVISION\nACTIVE SUPPLIER CERTIFICATION REGISTER\nLAST UPDATED: 31 January 2025</div>');
+    println('');
+    println('  <span class="c-dim">ID       SUPPLIER                             CERT TYPE      EXPIRY</span>');
+    println('<span class="c-faint">  ──────────────────────────────────────────────────────────────────</span>');
+    println('  SUP-041  Clearfield Grain Processing Co.     SQF L2         Aug 2025');
+    println('  SUP-044  Nordic Oat Derivatives AB           ISO 22000      Jun 2025');
+    println('  SUP-051  Lakeshore Chemical Intermediates    FSSC 22000     Nov 2025');
+    println('  SUP-057  Meridian Emulsifier Supply Ltd.     SQF L3         Mar 2026');
+    println('  SUP-062  Prairie Starch Cooperative          Non-GMO / SQF  Sep 2025');
+    println('  SUP-068  Coastal Packaging Solutions Inc.    BRC Grade A    Apr 2026');
+    println('  SUP-071  Hartwell Enzyme Technologies        ISO 22000      Jan 2026');
+    println('  SUP-079  Delta Mineral Carriers LLC          FSSC 22000     Dec 2025');
+    println('  SUP-083  Apex Stabilizer Components         SQF L2         Jul 2025');
+    println('');
+    println('Suppliers pending renewal (within 90 days): SUP-041, SUP-062');
+    println('Open corrective actions: none');
+    println('');
+    println('<span class="c-faint">Procurement Division // January 2025</span>');
+    println('</div>');
+    println('');
+  },
+
+  // ── DUMMY FILE 3 — INGREDIENT SPEC ──
+  'cat ingredient_spec_avg_std.txt': () => {
+    println('');
+    println('<div class="file-block">');
+    println('<div class="file-block-header">AGRO-VANCE GLOBAL // TECHNICAL DIVISION\nSTANDARD INGREDIENT SPECIFICATION SHEET — PORTFOLIO OVERVIEW\nREVISION: 4.1 // JANUARY 2025</div>');
+    println('');
+    println('  <span class="c-dim">AV-STARCH-3</span>  Modified waxy maize starch');
+    println('    Moisture:         max 14.0%');
+    println('    pH (10% slurry):  4.5 – 7.0');
+    println('    Viscosity:        600 – 900 BU (Brabender)');
+    println('    Appearance:       white to off-white free-flowing powder');
+    println('    Pack size:        25kg paper sack / 1000kg bulk bag');
+    println('');
+    println('  <span class="c-dim">AV-EMULSIFY-7</span>  DATEM blend — dough strengthener');
+    println('    Acid value:       max 72 mg KOH/g');
+    println('    Saponification:   125 – 145 mg KOH/g');
+    println('    Melting point:    38 – 48°C');
+    println('    Appearance:       cream to yellow waxy solid or powder');
+    println('    Pack size:        25kg carton');
+    println('');
+    println('  <span class="c-dim">AV-GLUTEN-9</span>   Stabilizing texturizer &amp; binding emulsifier');
+    println('    Protein content:  min 75% (dry basis)');
+    println('    Moisture:         max 8.0%');
+    println('    Particle size:    D90 max 200 micron');
+    println('    Appearance:       cream to light tan free-flowing powder');
+    println('    Pack size:        25kg paper sack / bulk tanker');
+    println('    <span class="c-amber">Status:           Batch 109-Sigma — voluntary recall active (SD-9-0047)</span>');
+    println('');
+    println('  <span class="c-dim">AV-FIBER-12</span>   Soluble oat beta-glucan blend');
+    println('    Beta-glucan:      min 70%');
+    println('    Moisture:         max 10.0%');
+    println('    Appearance:       white to cream powder');
+    println('    Pack size:        20kg bag');
+    println('');
+    println('<span class="c-faint">Technical Division // Revision 4.1 // January 2025</span>');
+    println('</div>');
+    println('');
+  },
+
+  // ── DUMMY FILE 4 — DIST PARTNER AGREEMENTS ──
+  'cat dist_partner_agreements.txt': () => {
+    println('');
+    println('<div class="file-block">');
+    println('<div class="file-block-header">AGRO-VANCE GLOBAL // COMMERCIAL DIVISION\nDISTRIBUTION PARTNER AGREEMENT INDEX\nAS OF: Q1 2025</div>');
+    println('');
+    println('  CHANNEL ALPHA (North America East &amp; Central)');
+    println('    47 active agreements // Next renewal cycle: Q3 2025');
+    println('    Master template: DA-TMPL-NA-2022-R3');
+    println('');
+    println('  CHANNEL BETA (North America West &amp; Northwest)');
+    println('    31 active agreements // Next renewal cycle: Q4 2025');
+    println('    Master template: DA-TMPL-NA-2022-R3');
+    println('');
+    println('  CHANNEL GAMMA (Northern Europe)');
+    println('    28 active agreements // Next renewal cycle: Q2 2025');
+    println('    Master template: DA-TMPL-EU-2023-R1');
+    println('    Note: EU template updated post-DATEM reclassification Jan 2025');
+    println('');
+    println('  CHANNEL DELTA (Asia-Pacific &amp; Other)');
+    println('    19 active agreements // Next renewal cycle: Q1 2026');
+    println('    Master template: DA-TMPL-APAC-2021-R2');
+    println('');
+    println('Total active agreements: 125');
+    println('Under renewal negotiation: 8');
+    println('<span class="c-amber">Suspended pending recall resolution (SD-9-0047): 14</span>');
+    println('');
+    println('<span class="c-faint">Commercial Division // January 2025</span>');
+    println('</div>');
+    println('');
+  },
+
+  // ── DUMMY FILE 5 — WASTE DISPOSAL LOG ──
+  'cat waste_disposal_log_2024.txt': () => {
+    println('');
+    println('<div class="file-block">');
+    println('<div class="file-block-header">AGRO-VANCE GLOBAL // ENVIRONMENTAL COMPLIANCE\nWASTE DISPOSAL AND EFFLUENT LOG — RIVER RIDGE 2024\nEPA PERMIT REF: RR-WD-2019-047</div>');
+    println('');
+    println('Reporting period: 01 January 2024 — 31 December 2024');
+    println('');
+    println('  <span class="c-dim">SOLID WASTE</span>');
+    println('    Process waste (non-hazardous):  412.4t  licensed landfill');
+    println('    Packaging waste:                 38.1t  recycling contractor');
+    println('    Laboratory consumables:           2.8t  specialist disposal');
+    println('');
+    println('  <span class="c-dim">LIQUID EFFLUENT</span>');
+    println('    Process water discharge:       18,440 m³  municipal sewer');
+    println('    Cooling water discharge:       24,100 m³  direct waterway');
+    println('    pH range:                      6.8 – 7.4  within permit limits');
+    println('    BOD mean:                      24 mg/L    within permit limits');
+    println('');
+    println('  <span class="c-dim">HAZARDOUS MATERIALS</span>');
+    println('    Solvents (spent):               0.9t  licensed contractor');
+    println('    Lab chemicals (expired):        0.4t  licensed contractor');
+    println('    <span class="c-amber">R&amp;D process residues:          1.2t  see addendum RR-WD-ADD-NOV24</span>');
+    println('');
+    println('Annual compliance status: <span class="c-main">COMPLIANT</span>');
+    println('Permit renewal due: March 2025');
+    println('');
+    println('<span class="c-faint">Environmental Compliance // River Ridge // 31 January 2025</span>');
+    println('<span class="c-faint">Addendum RR-WD-ADD-NOV24 filed separately — restricted access.</span>');
+    println('</div>');
+    println('');
+  },
+
+  // ── BATCH CLEARANCE ──
+  'cat batch_clearance_109s.txt': () => {
+    println('');
+    println('<div class="file-block">');
+    println('<div class="file-block-header">AGRO-VANCE GLOBAL // QUALITY ASSURANCE DIVISION\nBATCH CLEARANCE CERTIFICATE — AV-GLUTEN-9 BATCH 109-SIGMA\nISSUED: 04 January 2025 // REF: QA-109S-CLR-0104</div>');
+    println('');
+    println('This certificate confirms AV-Gluten-9 Batch 109-Sigma has been assessed');
+    println('against all applicable food safety standards and is cleared for distribution');
+    println('across supply channels Alpha through Delta.');
+    println('');
+    println('  <span class="c-dim">PCR SCREEN:</span>           PASS');
+    println('  <span class="c-dim">BACTERIAL CULTURE:</span>    PASS');
+    println('  <span class="c-dim">HEAT PASTEURIZATION:</span>  PASS');
+    println('  <span class="c-dim">ALLERGEN PROFILE:</span>     PASS');
+    println('  <span class="c-dim">FOREIGN MATTER:</span>       PASS');
+    println('  <span class="c-dim">OVERALL STATUS:</span>       <span class="c-main">CLEARED FOR DISTRIBUTION</span>');
+    println('');
+    println('<hr class="file-rule">');
+    println('<span class="c-amber">INTERNAL QA NOTE — NOT FOR INCLUSION IN PARTNER DOCUMENTATION:</span>');
+    println('');
+    println('Batch 109-Sigma contains a protein-class process residue originating from');
+    println('the R&amp;D fluid transfer deviation logged under INC-RR4-NOV24.');
+    println('');
+    println('Standard food safety screening protocols — PCR, bacterial culture,');
+    println('pasteurization compliance — do not flag protein-class residues of this');
+    println('type. Batch has cleared all applicable checkpoints. No further');
+    println('screening action is required prior to distribution.');
+    println('');
+    println('R&amp;D division has confirmed the residue is within acceptable');
+    println('process variance parameters. Distribution proceeds as scheduled.');
+    println('');
+    println('<span class="c-faint">Authorized: Office of the CSO // 04 January 2025</span>');
+    println('<span class="c-faint">Classification: internal QA record — do not include in partner documentation</span>');
+    println('</div>');
+    println('');
+  },
+
+  // ── SUPPLY ROUTE MAP ──
+  'cat supply_route_map.txt': () => {
+    println('');
+    println('<div class="file-block">');
+    println('<div class="file-block-header">AV-GLUTEN-9 BATCH 109-SIGMA — DISTRIBUTION GRID\nCHANNELS: ALPHA · BETA · GAMMA · DELTA\nSTATUS: 14 March 2025</div>');
+    println('');
+    println('  CHANNEL ALPHA — North America (East &amp; Central)');
+    println('    Commercial bread &amp; bun manufacturing ........ 312 facilities');
+    println('    Frozen meal processing ...................... 89 facilities');
+    println('    QSR supply chain distributors .............. 47 contracts');
+    println('    Soft drink syrup — winter formulation ...... 23 bottlers');
+    println('');
+    println('  CHANNEL BETA — North America (West &amp; Northwest)');
+    println('    Bakery ingredient wholesale ................ 156 facilities');
+    println('    Seasoning &amp; spice blend manufacturing ...... 78 facilities');
+    println('    Institutional food service ................. 201 contracts');
+    println('');
+    println('  CHANNEL GAMMA — Northern Europe');
+    println('    UK / Ireland bread manufacturing ........... 94 facilities');
+    println('    Scandinavian processed food ................ 67 facilities');
+    println('    German &amp; Benelux food processing .......... 112 facilities');
+    println('');
+    println('  CHANNEL DELTA — Asia-Pacific &amp; Other');
+    println('    South Korea food manufacturing ............. 34 facilities');
+    println('    Australia / New Zealand ..................... 28 facilities');
+    println('    Other international partners ............... 103 contracts');
+    println('');
+    println('<hr class="file-rule">');
+    println('<span class="c-amber">TOTAL DISPATCHED:        ~400 metric tonnes</span>');
+    println('<span class="c-amber">ESTIMATED REACH:         340 million end consumers</span>');
+    println('<span class="c-amber">VOLUNTARY RECALL ISSUED: 22 March 2025 — SUPPLY CHAIN ONLY</span>');
+    println('<span class="c-amber">RECALL PENETRATION:      ~12% of affected distribution</span>');
+    println('');
+    println('<span class="c-faint">No end-consumer advisory issued. No external regulatory filings.</span>');
+    println('<span class="c-faint">Recall classified supply-chain-only per standing directive.</span>');
+    println('');
+    println('<hr class="file-rule">');
+    println('<span class="c-faint">DISTRIBUTION TELEMETRY REF: RR04-CH-A1D // BATCH: 109S</span>');
+    println('<span class="c-faint">STREAM MATRIX ID: 0x41-0x56-0x47-0x39</span>');
+    println('<span class="c-faint">CHANNEL SYNC: 22 March 2025 // NODE: AVG-ARCH-04</span>');
+    println('</div>');
+    println('');
+  },
+
+  // ── REACTOR INCIDENT ──
+  'cat reactor_incident_rr4.txt': () => {
+    println('');
+    println('<div class="file-block">');
+    println('<div class="file-block-header">INCIDENT REPORT — BIO-REACTOR CORE 4\nRIVER RIDGE INDUSTRIAL PROCESSING COMPLEX\nCLASSIFICATION: INTERNAL // NOT REPORTABLE\nFILED: November 2024</div>');
+    println('');
+    println('  <span class="c-dim">Incident type:</span>     Process deviation — aerosolized fluid transfer line');
+    println('  <span class="c-dim">Location:</span>          Bio-Reactor Core 4 — R&amp;D wing, Level B2');
+    println('  <span class="c-dim">Production run:</span>    AV-Gluten-9 — Batch 109-Sigma');
+    println('  <span class="c-dim">Reportable:</span>        <span class="c-amber">NO — classified internal per standing directive</span>');
+    println('  <span class="c-dim">Regulatory filing:</span> <span class="c-amber">NONE</span>');
+    println('');
+    println('An automated pressure valve failure during R&amp;D fluid transfer operations');
+    println('allowed process material to enter the primary emulsifier feed line');
+    println('serving the active AV-Gluten-9 production run for Batch 109-Sigma.');
+    println('');
+    println('Standard quality assurance screening was applied to the affected batch.');
+    println('<span class="c-amber">Batch passed all screening protocols. Clearance authorized.</span>');
+    println('See: BATCH_CLEARANCE_109S.TXT');
+    println('');
+    println('Internal query raised by <span class="redact">EMPLOYEE ID: TB-04</span> regarding');
+    println('clearance rationale for an affected batch. Query reviewed and closed');
+    println('by the Office of the CSO. <span class="redact">TB-04</span> departed the company');
+    println('on <span class="redact">REDACTED</span>.');
+    println('');
+    println('<hr class="file-rule">');
+    println('<span class="c-faint">REVIEW CONCLUSION: Pressure valve failure — standard equipment defect.</span>');
+    println('<span class="c-faint">No escalation. No external notification. Distribution proceeds.</span>');
+    println('');
+    println('<span class="c-faint">Filed: Office of the CSO // November 2024</span>');
+    println('<span class="c-faint">Scheduled for deletion: 14 March 2025</span>');
+    println('<span class="c-faint">Deletion did not occur.</span>');
+    println('</div>');
+    println('');
+  },
+
+  // ── REGULATORY STRATEGY MEMO ──
+  'cat memo_reg_strategy_0115.txt': () => {
+    println('');
+    println('<div class="file-block">');
+    println('<div class="file-block-header">AGRO-VANCE GLOBAL // INTERNAL CORRESPONDENCE\nFROM:    Vice President, Regulatory Affairs\nTO:      Chief Innovation Officer\nDATE:    15 January 2025 09:42 UTC\nSUBJECT: RE: AV-Gluten-9 (Batch 109-Sigma) — notification deferral\nCLASS:   PROPRIETARY // INTERNAL ONLY // DO NOT FORWARD</div>');
+    println('');
+    println('I have reviewed the preliminary 30-day rodent data for the Batch 109-Sigma');
+    println('production run out of Bio-Reactor Core 4. Concerns raised by R&amp;D regarding');
+    println('"atypical protein misfolding behaviors" in brain tissue of the test group');
+    println('are noted.');
+    println('');
+    println('Converting this to a formal food additive petition is not viable. A formal');
+    println('filing mandates full in-vivo neurotoxicity mapping and an open-ended review.');
+    println('We cannot absorb that delay with competitors closing in on our North American');
+    println('and Northern European contracts. The FDA request of 11 January for');
+    println('post-pasteurization stability data is a second round we cannot answer with');
+    println('what R&amp;D currently holds.');
+    println('');
+    println('Legal advises we proceed on an independent GRAS self-determination.');
+    println('');
+    println('We will withdraw the voluntary GRAS notification tomorrow morning, citing');
+    println('"proprietary formulation adjustments." I have contacted the outside toxicology');
+    println('panel we use for the AV-Starch line to review the modified starch and binding');
+    println('profiles. We will position the binding agent as a derivative of standard');
+    println('vegetable protein and secure an independent conclusion by end of Q1.');
+    println('');
+    println('Once the panel concludes, we can continue shipping directly to bakery clients');
+    println('out of River Ridge without agency review. Have R&amp;D consolidate their working');
+    println('files before the panel data review begins.');
+    println('');
+    println('<span class="c-faint">— VP Regulatory Affairs</span>');
+    println('</div>');
+    println('');
+  },
+
+  // ── REGULATOR CORRESPONDENCE ──
+  'cat reg_corresp_fda_0202.txt': () => {
+    println('');
+    println('<div class="file-block">');
+    println('<div class="file-block-header">REGULATOR CORRESPONDENCE — ARCHIVED COPY\nFILE: AVG-REG // LEGAL-EXTERNAL\nRECEIVED: 03 February 2025</div>');
+    println('');
+    println('U.S. FOOD AND DRUG ADMINISTRATION');
+    println('Office of Food Additive Safety');
+    println('<span class="c-faint">[address block omitted in archived copy]</span>');
+    println('');
+    println('02 February 2025');
+    println('');
+    println('Vice President, Regulatory Affairs');
+    println('Agro-Vance Global Inc.');
+    println('River Ridge Industrial Processing Complex');
+    println('');
+    println('RE: Withdrawal of GRAS Notice — AV-Gluten-9 Stabilizing Texturizer');
+    println('    (109-Sigma specification)');
+    println('    Company reference: <span class="c-amber">SIGMA-DELTA-NINE</span>');
+    println('');
+    println('Dear Vice President:');
+    println('');
+    println('This letter acknowledges receipt of your electronic communication dated');
+    println('16 January 2025 notifying the Agency that Agro-Vance Global is withdrawing its');
+    println('voluntary GRAS notice for AV-Gluten-9 Stabilizing Texturizer and Binding');
+    println('Emulsifier (109-Sigma specification), effective immediately.');
+    println('');
+    println('This withdrawal follows our request of 11 January 2025 for clarification');
+    println('regarding the thermal stability and post-pasteurization behavior of the');
+    println('protein fractions produced in Bio-Reactor Core 4. Specifically, our reviewers');
+    println('identified uncharacterized protein aggregates, with no associated nucleic acid');
+    println('signature, in the 90-day subchronic feeding data submitted with the notice.');
+    println('');
+    println('Because the notifier has ended the evaluation before these questions were');
+    println('resolved, the Agency has reached no conclusion regarding the safety of this');
+    println('substance. This withdrawal should not be read as an Agency determination.');
+    println('');
+    println('Please be advised that a firm marketing a substance on the basis of an');
+    println('independent GRAS conclusion, without notification to the Agency, assumes sole');
+    println('responsibility for the safety of that substance. The substance remains');
+    println('subject to the adulterated food provisions of the Federal Food, Drug, and');
+    println('Cosmetic Act.');
+    println('');
+    println('Sincerely,');
+    println('Director, Office of Food Additive Safety');
+    println('');
+    println('<hr class="file-rule">');
+    println('<span class="c-faint">Filed: Regulatory Affairs // 03 February 2025</span>');
+    println('<span class="c-faint">Response on file: none.</span>');
+    println('</div>');
+    println('');
+  },
+
+  // ── ENCRYPTED R&D LOG ──
+  'cat rnd_log_core4_0310.txt': () => {
+    println('');
+    println('<span class="c-amber">ACCESS REFUSED — PASSPHRASE REQUIRED.</span>');
+    println('<span class="c-dim">Usage: <span class="c-main">cat rnd_log_core4_0310.txt --key [5-char code]</span></span>');
+    println('<span class="c-faint">The key is the reactor designation, no spaces.</span>');
+    println('');
+  },
+
+  // ── ENCRYPTED SYSTEM LOG ──
+  'cat sys_log_rr04_0314.txt': () => {
+    println('');
+    println('<span class="c-amber">ACCESS REFUSED — PASSPHRASE REQUIRED.</span>');
+    println('<span class="c-dim">Usage: <span class="c-main">cat sys_log_rr04_0314.txt --key [4-char code]</span></span>');
+    println('<span class="c-faint">The key is embedded in the distribution data.</span>');
+    println('');
+  },
+};
+
+// ── ADVANCED ──
+const advanced = {
+  'cat rnd_log_core4_0310.txt --key core4': () => {
+    println('');
+    println('<span class="c-main">KEY ACCEPTED — DECRYPTING...</span>');
+    println('');
+    println('<div class="file-block">');
+    println('<div class="file-block-header">AGRO-VANCE GLOBAL // BIO-NUTRITIONAL R&amp;D LOG\nPROJECT: AV-GLUTEN-9 STABILIZATION // BATCH: 109-SIGMA\nLOGGED BY: Lead Biochemist, Bio-Reactor Core 4\nDATE: 10 March 2025</div>');
+    println('');
+    println('<span class="c-dim">SUMMARY</span>');
+    println('Thermal denaturation trial of AV-Gluten-9 Batch 109-Sigma at commercial bakery');
+    println('oven parameters (200°C / 392°F).');
+    println('');
+    println('<span class="c-dim">OBSERVATIONS</span>');
+    println('The protein did not denature. High heat produced an aggressive cascade of');
+    println('beta-sheet aggregation. The resulting structure behaves as a heat-stable');
+    println('crystalline protein matrix.');
+    println('');
+    println('<span class="c-dim">ANIMAL GROUP C — 10% AV-GLUTEN-9 SOLUTION</span>');
+    println('Subject C-04 showed acute behavioral hyper-reactivity on 07 March, including');
+    println('refusal of water and unprovoked aggression toward cage-mates. Expedited');
+    println('post-mortem histology (completed 10 March) showed extensive vacuolation of');
+    println('the cerebral cortex.');
+    println('');
+    println('<span class="c-amber">ASSESSMENT</span>');
+    println('This is not a manufacturing residue issue. The material induces a rapid,');
+    println('transmissible conformational change in host proteins. Standard PCR screening');
+    println('will not detect this because the compound lacks nucleic acids entirely.');
+    println('');
+    println('Batch 109-Sigma has been in distribution since January. Commercial bakery');
+    println('oven temperatures will not degrade it.');
+    println('');
+    println('<hr class="file-rule">');
+    println('<span class="c-faint">ADDENDUM: Management has ordered an immediate freeze on this log.</span>');
+    println('<span class="c-faint">Outside panel files sealed. Author reassigned to plant extract division</span>');
+    println('<span class="c-faint">effective 11 March 2025.</span>');
+    println('</div>');
+    println('');
+  },
+
+  'cat sys_log_rr04_0314.txt --key avg9': () => {
+    println('');
+    println('<span class="c-main">KEY ACCEPTED — DECRYPTING...</span>');
+    println('');
+    println('<div class="file-block">');
+    println('<div class="file-block-header">AGRO-VANCE GLOBAL // INTERNAL SYSTEMS LOG\nNODE: AVG-RR04 // RIVER RIDGE FACILITY\nDATE: 14 March 2025 // AUTO-GENERATED — NOT FOR DISTRIBUTION</div>');
+    println('');
+
+    println('<span class="c-dim">── SECTION A: SERVER ACTIVITY ──────────────────────────────────────</span>');
+    println('');
+    println('<span class="c-faint">14:02:17</span>  SYS_INFO:  Scheduled backup initiated — partitions 1 through 6');
+    println('<span class="c-faint">14:02:44</span>  SYS_INFO:  Backup complete — 14.2 GB written to cold storage');
+    println('<span class="c-faint">17:30:00</span>  SYS_INFO:  End-of-day batch processing initiated — standard schedule');
+    println('<span class="c-faint">18:11:03</span>  SYS_INFO:  Batch processing complete — no exceptions');
+    println('<span class="c-faint">19:44:58</span>  <span class="c-amber">SYS_WARN:  Unscheduled write operation — partition 3 (restricted)</span>');
+    println('<span class="c-faint">19:45:12</span>  <span class="c-amber">SYS_WARN:  Unscheduled write operation — partition 3 (restricted)</span>');
+    println('<span class="c-faint">19:45:31</span>  <span class="c-amber">SYS_WARN:  Large file transfer initiated — destination: external drive AVG-FD-009</span>');
+    println('<span class="c-faint">19:52:04</span>  <span class="c-amber">SYS_WARN:  External drive AVG-FD-009 disconnected — transfer incomplete</span>');
+    println('<span class="c-faint">21:38:44</span>  <span class="c-red">SYS_ALERT: Bulk deletion command received — partitions 2, 3, 4</span>');
+    println('<span class="c-faint">21:38:44</span>  <span class="c-red">SYS_ALERT: Deletion scope: 847 files flagged for removal</span>');
+    println('<span class="c-faint">21:38:51</span>  <span class="c-amber">SYS_WARN:  Deletion interrupted — power fluctuation on primary bus</span>');
+    println('<span class="c-faint">21:38:51</span>  SYS_INFO:  Files deleted: 312 // Files retained: 535');
+    println('<span class="c-faint">21:39:03</span>  <span class="c-red">SYS_ALERT: Primary power bus offline — switching to backup</span>');
+    println('<span class="c-faint">21:39:03</span>  SYS_INFO:  Backup power active — reduced capacity');
+    println('<span class="c-faint">21:44:17</span>  SYS_INFO:  Facility access credential <span class="redact">ID-CSO-001</span> — exit logged');
+    println('<span class="c-faint">21:44:17</span>  SYS_INFO:  No further credentialed access events recorded');
+    println('');
+
+    println('<span class="c-dim">── SECTION B: SUPPLY CHAIN CONFIRMATIONS — BATCH 109-SIGMA ─────────</span>');
+    println('');
+    println('<span class="c-faint">  Automated delivery acknowledgements received prior to comms degradation:</span>');
+    println('');
+    println('  <span class="c-faint">09:14:02</span>  ACK  PARTNER-ID: NA-A-0047  VOLUME: 18.4t   REF: 109S-A-0047  STATUS: RECEIVED');
+    println('  <span class="c-faint">09:41:28</span>  ACK  PARTNER-ID: NA-A-0112  VOLUME: 22.1t   REF: 109S-A-0112  STATUS: RECEIVED');
+    println('  <span class="c-faint">10:03:55</span>  ACK  PARTNER-ID: NA-A-0231  VOLUME: 9.7t    REF: 109S-A-0231  STATUS: RECEIVED');
+    println('  <span class="c-faint">11:17:44</span>  ACK  PARTNER-ID: EU-G-0018  VOLUME: 31.2t   REF: 109S-G-0018  STATUS: RECEIVED');
+    println('  <span class="c-faint">13:28:09</span>  ACK  PARTNER-ID: NA-B-0304  VOLUME: 14.8t   REF: 109S-B-0304  STATUS: RECEIVED');
+    println('  <span class="c-faint">14:50:33</span>  ACK  PARTNER-ID: AP-D-0009  VOLUME: 28.6t   REF: 109S-D-0009  STATUS: RECEIVED');
+    println('  <span class="c-faint">16:02:18</span>  ACK  PARTNER-ID: EU-G-0041  VOLUME: 17.3t   REF: 109S-G-0041  STATUS: RECEIVED');
+    println('  <span class="c-faint">18:44:51</span>  ACK  PARTNER-ID: NA-A-0389  VOLUME: 11.9t   REF: 109S-A-0389  STATUS: RECEIVED');
+    println('  <span class="c-faint">20:17:06</span>  <span class="c-amber">NACK PARTNER-ID: NA-A-0422  VOLUME: 8.2t    REF: 109S-A-0422  STATUS: NO_RESPONSE</span>');
+    println('  <span class="c-faint">20:31:14</span>  <span class="c-amber">NACK PARTNER-ID: NA-B-0187  VOLUME: 19.4t   REF: 109S-B-0187  STATUS: NO_RESPONSE</span>');
+    println('  <span class="c-faint">21:08:39</span>  <span class="c-red">NACK PARTNER-ID: NA-A-0055  VOLUME: 24.7t   REF: 109S-A-0055  STATUS: COMM_FAILURE</span>');
+    println('  <span class="c-faint">21:22:17</span>  <span class="c-red">NACK PARTNER-ID: EU-G-0033  VOLUME: 16.1t   REF: 109S-G-0033  STATUS: COMM_FAILURE</span>');
+    println('  <span class="c-faint">21:44:58</span>  <span class="c-red">  [acknowledgement loop suspended — comm infrastructure unavailable]</span>');
+    println('');
+    println('  <span class="c-faint">Confirmed received prior to suspension: 239.5t of 400t dispatched</span>');
+    println('  <span class="c-faint">Confirmation status unknown:            160.5t — no further data</span>');
+    println('');
+
+    println('<span class="c-dim">── SECTION C: ACCESS LOG — 14 March 2025 ───────────────────────────</span>');
+    println('');
+    println('  <span class="c-faint">06:04:11</span>  ACCESS  <span class="redact">ID-FAC-012</span>   Facility entry   Level 1');
+    println('  <span class="c-faint">06:47:38</span>  ACCESS  <span class="redact">ID-FAC-031</span>   Facility entry   Level 1');
+    println('  <span class="c-faint">07:12:55</span>  ACCESS  <span class="redact">ID-FAC-008</span>   Facility entry   Level 1');
+    println('  <span class="c-faint">08:30:00</span>  ACCESS  <span class="redact">ID-FAC-MULTI</span> Standard shift   14 personnel');
+    println('  <span class="c-faint">09:03:14</span>  ACCESS  <span class="redact">ID-CSO-001</span>   Level B2 entry   R&amp;D wing');
+    println('  <span class="c-faint">14:18:22</span>  ACCESS  <span class="redact">ID-CSO-001</span>   Archive room     Read/write');
+    println('  <span class="c-faint">14:18:22</span>  <span class="c-amber">ACCESS  <span class="redact">ID-EXT-047</span>   Archive room     Visitor — unscheduled</span>');
+    println('  <span class="c-faint">19:33:07</span>  <span class="c-amber">ACCESS  <span class="redact">ID-EXT-047</span>   Level B2 exit    Badge deactivated on exit</span>');
+    println('  <span class="c-faint">21:38:34</span>  ACCESS  <span class="redact">ID-CSO-001</span>   Server room      Command terminal');
+    println('  <span class="c-faint">21:44:17</span>  ACCESS  <span class="redact">ID-CSO-001</span>   Facility exit    Last recorded event');
+    println('  <span class="c-faint">21:44:17</span>  <span class="c-red">  [no further access events recorded — facility status unknown]</span>');
+    println('');
+
+    println('<hr class="file-rule">');
+    println('<span class="c-faint">LOG END // AVG-RR04 // 14 March 2025 // Auto-archived to cold storage 21:39:03</span>');
+    println('<span class="c-faint">This log was scheduled for deletion on 14 March 2025. Deletion did not complete.</span>');
+    println('</div>');
+    println('');
+  },
+};
+
+// ── COMMAND HANDLER ──
+function processCommand(raw) {
+  const input = raw.trim();
+  const lower = input.toLowerCase();
+  println(`<span class="c-dim">AVG_ARCH&gt; ${raw}</span>`);
+  if (!input) return;
+  cmdHistory.unshift(input); historyIdx = -1;
+
+  if (lower === 'clear') { out.innerHTML = ''; return; }
+
+  if (lower === 'help') {
+    println('');
+    println('<span class="c-dim">COMMANDS</span>');
+    println('<span class="c-faint">──────────────────────────────────────────────────────────────────────</span>');
+    println('  <span class="c-main">ls</span>                            List recovered files');
+    println('  <span class="c-main">cat [filename]</span>                Read a file');
+    println('  <span class="c-main">cat [filename] --key [code]</span>   Unlock encrypted file');
+    println('  <span class="c-main">clear</span>                         Clear terminal');
+    println('  <span class="c-main">help</span>                          Show commands');
+    println('');
+    return;
+  }
+
+  if (advanced[lower]) { advanced[lower](); return; }
+  if (files[lower])    { files[lower]();    return; }
+
+  if (lower.startsWith('cat ') && !lower.includes('--')) {
+    const fname = lower.replace('cat ','').trim();
+    const match = Object.keys(files).find(k => k.startsWith('cat ') && k.includes(fname));
+    if (match) {
+      println(`<span class="c-amber">Did you mean: <span class="c-main">${match}</span></span>`);
+      println(''); return;
+    }
+  }
+
+  println(`<span class="c-amber">COMMAND NOT RECOGNIZED: "${input}" — type <span class="c-main">help</span> for syntax</span>`);
+  println('');
+}
+
+// ── INPUT ──
+cmdInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const val = cmdInput.value; cmdInput.value = '';
+    processCommand(val);
+  }
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (historyIdx < cmdHistory.length - 1) { historyIdx++; cmdInput.value = cmdHistory[historyIdx]; }
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (historyIdx > 0) { historyIdx--; cmdInput.value = cmdHistory[historyIdx]; }
+    else { historyIdx = -1; cmdInput.value = ''; }
+  }
+});
+
+document.addEventListener('click', () => {
+  if (document.getElementById('terminal-screen').classList.contains('active'))
+    cmdInput.focus();
+});
+
+function hr() { return '<span class="c-faint">' + '─'.repeat(72) + '</span>'; }
+</script>
+</body>
+</html>
