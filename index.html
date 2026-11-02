@@ -304,7 +304,7 @@ const bootLines = [
   { t: '  [SECTOR 03] Integrity check... PARTIAL — files flagged for deletion', c: 'warn' },
   { t: '  [SECTOR 04] Integrity check... OK', c: '' },
   { t: 'Indexing recovered documents...', c: '' },
-  { t: '  12 documents recovered from cold storage', c: '' },
+  { t: '  9 documents recovered from cold storage', c: '' },
   { t: '  Build timestamp: 2025-03-14 — no administrator activity since', c: 'warn' },
   { t: '', c: '' },
   { t: 'WARNING: This system has not been actively administered since 14 March 2025.', c: 'warn' },
@@ -396,7 +396,7 @@ function initTerminal() {
     '',
     '<span class="c-main">AGRO-VANCE GLOBAL // RESTRICTED ARCHIVE — RR-ARCH-04</span>',
     '<span class="c-dim">River Ridge Industrial Processing Complex — Cold Storage Recovery</span>',
-    '<span class="c-faint">Build: 2025.03.14 // Documents recovered: 12 // Last activity: 2025-03-14</span>',
+    '<span class="c-faint">Build: 2025.03.14 // Documents recovered: 9 // Last activity: 2025-03-14</span>',
     '',
     hr(),
     '',
@@ -417,7 +417,7 @@ const files = {
   'ls': () => {
     println('');
     println('<span class="c-dim">COLD STORAGE NODE RR-ARCH-04 — FILE INDEX</span>');
-    println('<span class="c-faint">12 documents recovered // Last write: 2025-03-14</span>');
+    println('<span class="c-faint">9 documents recovered // Last write: 2025-03-14</span>');
     println('');
     [
       ['COMPLIANCE_AUDIT_2024_Q4.TXT','UNLOCKED',  'SQF Level 3 audit summary — Q4 2024'],
@@ -428,9 +428,6 @@ const files = {
       ['BATCH_CLEARANCE_109S.TXT',   'UNLOCKED',  'QA certificate — AV-Gluten-9 Batch 109-Sigma'],
       ['SUPPLY_ROUTE_MAP.TXT',       'UNLOCKED',  'Distribution grid — Channels Alpha through Delta'],
       ['REACTOR_INCIDENT_RR4.TXT',   'UNLOCKED',  'Incident report — Bio-Reactor Core 4 — Nov 2024'],
-      ['MEMO_REG_STRATEGY_0115.TXT', 'UNLOCKED',  'Internal memo — regulatory pathway — 15 Jan 2025'],
-      ['REG_CORRESP_FDA_0202.TXT',   'UNLOCKED',  'Regulator correspondence — notice withdrawal — 02 Feb 2025'],
-      ['RND_LOG_CORE4_0310.TXT',     'ENCRYPTED', 'R&amp;D log — Bio-Reactor Core 4 — 10 Mar 2025 // KEY REQUIRED'],
       ['SYS_LOG_RR04_0314.TXT',      'ENCRYPTED', 'Internal system log — 14 March 2025 // KEY REQUIRED'],
     ].forEach(([name, status, desc]) => {
       const sc = status === 'UNLOCKED' ? 'c-main' : 'c-amber';
@@ -441,7 +438,7 @@ const files = {
       );
     });
     println('');
-    println('<span class="c-faint">Encrypted files: <span class="c-amber">cat [filename] --key [code]</span></span>');
+    println('<span class="c-faint">Encrypted files: <span class="c-amber">cat [filename] --key [4-char code]</span></span>');
     println('');
   },
 
@@ -675,7 +672,7 @@ const files = {
     println('<hr class="file-rule">');
     println('<span class="c-amber">TOTAL DISPATCHED:        ~400 metric tonnes</span>');
     println('<span class="c-amber">ESTIMATED REACH:         340 million end consumers</span>');
-    println('<span class="c-amber">VOLUNTARY RECALL ISSUED: 22 March 2025 — SUPPLY CHAIN ONLY</span>');
+    println('<span class="c-amber">VOLUNTARY RECALL ISSUED: 07 March 2025 — SUPPLY CHAIN ONLY</span>');
     println('<span class="c-amber">RECALL PENETRATION:      ~12% of affected distribution</span>');
     println('');
     println('<span class="c-faint">No end-consumer advisory issued. No external regulatory filings.</span>');
@@ -684,7 +681,7 @@ const files = {
     println('<hr class="file-rule">');
     println('<span class="c-faint">DISTRIBUTION TELEMETRY REF: RR04-CH-A1D // BATCH: 109S</span>');
     println('<span class="c-faint">STREAM MATRIX ID: 0x41-0x56-0x47-0x39</span>');
-    println('<span class="c-faint">CHANNEL SYNC: 22 March 2025 // NODE: AVG-ARCH-04</span>');
+    println('<span class="c-faint">CHANNEL SYNC: 07 March 2025 // NODE: AVG-ARCH-04</span>');
     println('</div>');
     println('');
   },
@@ -725,103 +722,6 @@ const files = {
     println('');
   },
 
-  // ── REGULATORY STRATEGY MEMO ──
-  'cat memo_reg_strategy_0115.txt': () => {
-    println('');
-    println('<div class="file-block">');
-    println('<div class="file-block-header">AGRO-VANCE GLOBAL // INTERNAL CORRESPONDENCE\nFROM:    Vice President, Regulatory Affairs\nTO:      Chief Innovation Officer\nDATE:    15 January 2025 09:42 UTC\nSUBJECT: RE: AV-Gluten-9 (Batch 109-Sigma) — notification deferral\nCLASS:   PROPRIETARY // INTERNAL ONLY // DO NOT FORWARD</div>');
-    println('');
-    println('I have reviewed the preliminary 30-day rodent data for the Batch 109-Sigma');
-    println('production run out of Bio-Reactor Core 4. Concerns raised by R&amp;D regarding');
-    println('"atypical protein misfolding behaviors" in brain tissue of the test group');
-    println('are noted.');
-    println('');
-    println('Converting this to a formal food additive petition is not viable. A formal');
-    println('filing mandates full in-vivo neurotoxicity mapping and an open-ended review.');
-    println('We cannot absorb that delay with competitors closing in on our North American');
-    println('and Northern European contracts. The FDA request of 11 January for');
-    println('post-pasteurization stability data is a second round we cannot answer with');
-    println('what R&amp;D currently holds.');
-    println('');
-    println('Legal advises we proceed on an independent GRAS self-determination.');
-    println('');
-    println('We will withdraw the voluntary GRAS notification tomorrow morning, citing');
-    println('"proprietary formulation adjustments." I have contacted the outside toxicology');
-    println('panel we use for the AV-Starch line to review the modified starch and binding');
-    println('profiles. We will position the binding agent as a derivative of standard');
-    println('vegetable protein and secure an independent conclusion by end of Q1.');
-    println('');
-    println('Once the panel concludes, we can continue shipping directly to bakery clients');
-    println('out of River Ridge without agency review. Have R&amp;D consolidate their working');
-    println('files before the panel data review begins.');
-    println('');
-    println('<span class="c-faint">— VP Regulatory Affairs</span>');
-    println('</div>');
-    println('');
-  },
-
-  // ── REGULATOR CORRESPONDENCE ──
-  'cat reg_corresp_fda_0202.txt': () => {
-    println('');
-    println('<div class="file-block">');
-    println('<div class="file-block-header">REGULATOR CORRESPONDENCE — ARCHIVED COPY\nFILE: AVG-REG // LEGAL-EXTERNAL\nRECEIVED: 03 February 2025</div>');
-    println('');
-    println('U.S. FOOD AND DRUG ADMINISTRATION');
-    println('Office of Food Additive Safety');
-    println('<span class="c-faint">[address block omitted in archived copy]</span>');
-    println('');
-    println('02 February 2025');
-    println('');
-    println('Vice President, Regulatory Affairs');
-    println('Agro-Vance Global Inc.');
-    println('River Ridge Industrial Processing Complex');
-    println('');
-    println('RE: Withdrawal of GRAS Notice — AV-Gluten-9 Stabilizing Texturizer');
-    println('    (109-Sigma specification)');
-    println('    Company reference: <span class="c-amber">SIGMA-DELTA-NINE</span>');
-    println('');
-    println('Dear Vice President:');
-    println('');
-    println('This letter acknowledges receipt of your electronic communication dated');
-    println('16 January 2025 notifying the Agency that Agro-Vance Global is withdrawing its');
-    println('voluntary GRAS notice for AV-Gluten-9 Stabilizing Texturizer and Binding');
-    println('Emulsifier (109-Sigma specification), effective immediately.');
-    println('');
-    println('This withdrawal follows our request of 11 January 2025 for clarification');
-    println('regarding the thermal stability and post-pasteurization behavior of the');
-    println('protein fractions produced in Bio-Reactor Core 4. Specifically, our reviewers');
-    println('identified uncharacterized protein aggregates, with no associated nucleic acid');
-    println('signature, in the 90-day subchronic feeding data submitted with the notice.');
-    println('');
-    println('Because the notifier has ended the evaluation before these questions were');
-    println('resolved, the Agency has reached no conclusion regarding the safety of this');
-    println('substance. This withdrawal should not be read as an Agency determination.');
-    println('');
-    println('Please be advised that a firm marketing a substance on the basis of an');
-    println('independent GRAS conclusion, without notification to the Agency, assumes sole');
-    println('responsibility for the safety of that substance. The substance remains');
-    println('subject to the adulterated food provisions of the Federal Food, Drug, and');
-    println('Cosmetic Act.');
-    println('');
-    println('Sincerely,');
-    println('Director, Office of Food Additive Safety');
-    println('');
-    println('<hr class="file-rule">');
-    println('<span class="c-faint">Filed: Regulatory Affairs // 03 February 2025</span>');
-    println('<span class="c-faint">Response on file: none.</span>');
-    println('</div>');
-    println('');
-  },
-
-  // ── ENCRYPTED R&D LOG ──
-  'cat rnd_log_core4_0310.txt': () => {
-    println('');
-    println('<span class="c-amber">ACCESS REFUSED — PASSPHRASE REQUIRED.</span>');
-    println('<span class="c-dim">Usage: <span class="c-main">cat rnd_log_core4_0310.txt --key [5-char code]</span></span>');
-    println('<span class="c-faint">The key is the reactor designation, no spaces.</span>');
-    println('');
-  },
-
   // ── ENCRYPTED SYSTEM LOG ──
   'cat sys_log_rr04_0314.txt': () => {
     println('');
@@ -834,44 +734,6 @@ const files = {
 
 // ── ADVANCED ──
 const advanced = {
-  'cat rnd_log_core4_0310.txt --key core4': () => {
-    println('');
-    println('<span class="c-main">KEY ACCEPTED — DECRYPTING...</span>');
-    println('');
-    println('<div class="file-block">');
-    println('<div class="file-block-header">AGRO-VANCE GLOBAL // BIO-NUTRITIONAL R&amp;D LOG\nPROJECT: AV-GLUTEN-9 STABILIZATION // BATCH: 109-SIGMA\nLOGGED BY: Lead Biochemist, Bio-Reactor Core 4\nDATE: 10 March 2025</div>');
-    println('');
-    println('<span class="c-dim">SUMMARY</span>');
-    println('Thermal denaturation trial of AV-Gluten-9 Batch 109-Sigma at commercial bakery');
-    println('oven parameters (200°C / 392°F).');
-    println('');
-    println('<span class="c-dim">OBSERVATIONS</span>');
-    println('The protein did not denature. High heat produced an aggressive cascade of');
-    println('beta-sheet aggregation. The resulting structure behaves as a heat-stable');
-    println('crystalline protein matrix.');
-    println('');
-    println('<span class="c-dim">ANIMAL GROUP C — 10% AV-GLUTEN-9 SOLUTION</span>');
-    println('Subject C-04 showed acute behavioral hyper-reactivity on 07 March, including');
-    println('refusal of water and unprovoked aggression toward cage-mates. Expedited');
-    println('post-mortem histology (completed 10 March) showed extensive vacuolation of');
-    println('the cerebral cortex.');
-    println('');
-    println('<span class="c-amber">ASSESSMENT</span>');
-    println('This is not a manufacturing residue issue. The material induces a rapid,');
-    println('transmissible conformational change in host proteins. Standard PCR screening');
-    println('will not detect this because the compound lacks nucleic acids entirely.');
-    println('');
-    println('Batch 109-Sigma has been in distribution since January. Commercial bakery');
-    println('oven temperatures will not degrade it.');
-    println('');
-    println('<hr class="file-rule">');
-    println('<span class="c-faint">ADDENDUM: Management has ordered an immediate freeze on this log.</span>');
-    println('<span class="c-faint">Outside panel files sealed. Author reassigned to plant extract division</span>');
-    println('<span class="c-faint">effective 11 March 2025.</span>');
-    println('</div>');
-    println('');
-  },
-
   'cat sys_log_rr04_0314.txt --key avg9': () => {
     println('');
     println('<span class="c-main">KEY ACCEPTED — DECRYPTING...</span>');
